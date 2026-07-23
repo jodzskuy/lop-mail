@@ -27,6 +27,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .controls input[type=text]{width:180px}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
 .toast.show{opacity:1}
+.toast.error{background:var(--red)}
 .mail-list{display:flex;flex-direction:column;gap:10px}
 .mail-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all .2s}
 .mail-item:hover{border-color:var(--accent);transform:translateY(-1px)}
@@ -50,7 +51,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .badge{background:var(--accent);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600}
 .refresh-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .timer{color:var(--text2);font-size:13px}
-@media(max-width:600px){.email-addr{font-size:16px}.container{padding:16px}.email-display{flex-direction:column;align-items:stretch}.email-display .btn{width:100%;justify-content:center}}
+/* Tabs */
+.tabs{display:flex;gap:0;margin-bottom:20px;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.tab{flex:1;padding:14px 20px;text-align:center;cursor:pointer;font-size:14px;font-weight:600;color:var(--text2);transition:all .2s;border-bottom:2px solid transparent}
+.tab:hover{color:var(--text);background:rgba(108,92,231,.05)}
+.tab.active{color:var(--accent2);border-bottom-color:var(--accent);background:rgba(108,92,231,.08)}
+/* Lookup input */
+.lookup-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lookup-bar input{flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:12px 16px;border-radius:8px;font-size:15px;font-family:'Courier New',monospace}
+.lookup-bar input:focus{outline:none;border-color:var(--accent)}
+.lookup-bar input::placeholder{color:var(--text2);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+.mode-section{display:none}.mode-section.active{display:block}
+.loading{text-align:center;padding:40px;color:var(--text2)}
+.loading .spinner{display:inline-block;width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-right:10px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.footer{text-align:center;padding:16px;color:var(--text2);font-size:12px;border-top:1px solid var(--border)}
 </style>
 </head>
 <body>
@@ -60,34 +75,55 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div class="status"><div class="dot"></div> <span id="statusText">Auto-refresh active</span></div>
 </div>
 
-<div class="container" id="mainView">
-  <div class="email-bar">
-    <div class="email-display">
-      <div class="email-addr" id="currentEmail">Loading...</div>
-      <button class="btn btn-primary" onclick="copyEmail()">📋 Copy</button>
-      <button class="btn btn-green" onclick="newAddress()">🔄 New Address</button>
-    </div>
-    <div class="controls">
-      <label>Custom name:</label>
-      <input type="text" id="customName" placeholder="random" maxlength="30">
-      <label>Refresh:</label>
-      <select id="refreshInterval" onchange="setRefresh()">
-        <option value="5">5s</option>
-        <option value="10" selected>10s</option>
-        <option value="30">30s</option>
-        <option value="0">Off</option>
-      </select>
-      <button class="btn btn-secondary btn-small" onclick="loadMails()">🔃 Refresh Now</button>
+<div class="container">
+  <!-- Mode Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchMode('generate')">🆕 Generate Email</div>
+    <div class="tab" onclick="switchMode('lookup')">🔍 Check Inbox</div>
+  </div>
+
+  <!-- Generate Mode -->
+  <div class="mode-section active" id="modeGenerate">
+    <div class="email-bar">
+      <div class="email-display">
+        <div class="email-addr" id="currentEmail">Loading...</div>
+        <button class="btn btn-primary" onclick="copyEmail()">📋 Copy</button>
+        <button class="btn btn-green" onclick="newAddress()">🔄 New</button>
+      </div>
+      <div class="controls">
+        <label>Custom name:</label>
+        <input type="text" id="customName" placeholder="random" maxlength="30">
+        <label>Refresh:</label>
+        <select id="refreshInterval" onchange="setRefresh()">
+          <option value="5">5s</option>
+          <option value="10" selected>10s</option>
+          <option value="30">30s</option>
+          <option value="0">Off</option>
+        </select>
+        <button class="btn btn-secondary btn-small" onclick="loadMails()">🔃 Refresh</button>
+      </div>
     </div>
   </div>
 
+  <!-- Lookup Mode -->
+  <div class="mode-section" id="modeLookup">
+    <div class="email-bar">
+      <div style="font-size:14px;color:var(--text2);margin-bottom:12px">Enter an existing <b>@lop.my.id</b> address to check its inbox</div>
+      <div class="lookup-bar">
+        <input type="text" id="lookupInput" placeholder="hermes@lop.my.id" onkeydown="if(event.key==='Enter')lookupEmail()">
+        <button class="btn btn-primary" onclick="lookupEmail()">🔍 Check</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shared inbox area -->
   <div class="refresh-bar">
     <span id="mailCount" class="badge">0 messages</span>
     <span class="timer" id="nextRefresh">Next refresh in 10s</span>
   </div>
 
   <div class="mail-list" id="mailList">
-    <div class="empty"><div class="icon">📭</div><div>No emails yet</div><div style="margin-top:8px;font-size:13px">Use the address above to receive emails</div></div>
+    <div class="empty"><div class="icon">📭</div><div>No emails yet</div><div style="margin-top:8px;font-size:13px">Generate an email or check an existing inbox</div></div>
   </div>
 </div>
 
@@ -106,6 +142,7 @@ let mails = [];
 let refreshTimer = null;
 let countdownTimer = null;
 let countdown = 10;
+let mode = 'generate'; // 'generate' or 'lookup'
 
 // Init
 (async function init() {
@@ -126,11 +163,71 @@ let countdown = 10;
   await newAddress();
 })();
 
+function switchMode(m) {
+  mode = m;
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', (i === 0 && m === 'generate') || (i === 1 && m === 'lookup'));
+  });
+  document.getElementById('modeGenerate').classList.toggle('active', m === 'generate');
+  document.getElementById('modeLookup').classList.toggle('active', m === 'lookup');
+  if (m === 'lookup') {
+    setTimeout(() => document.getElementById('lookupInput').focus(), 100);
+  }
+}
+
+async function lookupEmail() {
+  const input = document.getElementById('lookupInput');
+  let addr = input.value.trim().toLowerCase();
+  if (!addr) { showToast('Enter an email address', true); return; }
+
+  // Auto-append @lop.my.id if no domain given
+  if (!addr.includes('@')) {
+    addr = addr + '@lop.my.id';
+  }
+
+  // Validate domain
+  if (!addr.endsWith('@lop.my.id')) {
+    showToast('Only @lop.my.id addresses allowed', true);
+    return;
+  }
+
+  showToast('Looking up ' + addr + '...');
+
+  try {
+    // Get token for this address
+    const tokenRes = await fetch(API + '/api/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address: addr })
+    });
+    const tokenData = await tokenRes.json();
+
+    if (tokenData.error) {
+      showToast('Address not found: ' + addr, true);
+      return;
+    }
+
+    // Switch to this inbox
+    currentAddr = addr;
+    currentToken = tokenData.token;
+    localStorage.setItem('lop_mail', JSON.stringify({ address: currentAddr, token: currentToken }));
+    document.getElementById('currentEmail').textContent = currentAddr;
+
+    // Switch to generate tab to show the inbox
+    switchMode('generate');
+    await loadMails();
+    startCountdown();
+    showToast('📬 Viewing inbox: ' + addr);
+  } catch(e) {
+    showToast('Network error', true);
+  }
+}
+
 async function newAddress() {
   const custom = document.getElementById('customName').value.trim();
   const body = { domain: 'lop.my.id' };
   if (custom) body.name = custom.replace(/[^a-zA-Z0-9._-]/g, '');
-  
+
   try {
     const res = await fetch(API + '/api/new_address', {
       method: 'POST',
@@ -147,12 +244,12 @@ async function newAddress() {
       renderMails();
       loadMails();
       startCountdown();
-      showToast('✅ New address created!');
+      showToast('✅ New address: ' + currentAddr);
     } else {
-      showToast('❌ Failed: ' + (data.error || 'unknown'));
+      showToast('Failed: ' + (data.error || 'unknown'), true);
     }
   } catch(e) {
-    showToast('❌ Network error');
+    showToast('Network error', true);
   }
 }
 
@@ -172,12 +269,12 @@ function renderMails() {
   const list = document.getElementById('mailList');
   const count = document.getElementById('mailCount');
   count.textContent = mails.length + ' message' + (mails.length !== 1 ? 's' : '');
-  
+
   if (mails.length === 0) {
-    list.innerHTML = '<div class="empty"><div class="icon">📭</div><div>No emails yet</div><div style="margin-top:8px;font-size:13px">Use the address above to receive emails</div></div>';
+    list.innerHTML = '<div class="empty"><div class="icon">📭</div><div>No emails yet</div><div style="margin-top:8px;font-size:13px">Send an email to <b>' + esc(currentAddr) + '</b> and it will appear here</div></div>';
     return;
   }
-  
+
   list.innerHTML = mails.map((m, i) => {
     const t = m.createdAt ? timeAgo(m.createdAt) : '';
     return '<div class="mail-item unread" onclick="openMail(' + i + ')">' +
@@ -192,17 +289,17 @@ function renderMails() {
 async function openMail(idx) {
   const m = mails[idx];
   if (!m) return;
-  
-  document.getElementById('mainView').style.display = 'none';
+
+  document.getElementById('mainView')?.style && (document.querySelector('.container').style.display = 'none');
   document.getElementById('detailView').style.display = 'block';
-  
+
   let bodyHtml = '';
   if (m.html && m.html.length > 0 && m.html[0]) {
     bodyHtml = '<iframe id="mailFrame" sandbox="allow-same-origin" onload="resizeFrame(this)"></iframe>';
   } else {
     bodyHtml = '<div class="body">' + esc(m.text || '(empty)') + '</div>';
   }
-  
+
   document.getElementById('mailDetail').innerHTML =
     '<h2>' + esc(m.subject || '(no subject)') + '</h2>' +
     '<div class="meta">' +
@@ -211,7 +308,7 @@ async function openMail(idx) {
       '<div><strong>Date:</strong> ' + (m.createdAt ? new Date(m.createdAt).toLocaleString() : 'unknown') + '</div>' +
     '</div>' +
     bodyHtml;
-  
+
   if (m.html && m.html.length > 0 && m.html[0]) {
     setTimeout(() => {
       const frame = document.getElementById('mailFrame');
@@ -232,12 +329,12 @@ function resizeFrame(f) {
 }
 
 function closeDetail() {
-  document.getElementById('mainView').style.display = 'block';
+  document.querySelector('.container').style.display = 'block';
   document.getElementById('detailView').style.display = 'none';
 }
 
 function copyEmail() {
-  navigator.clipboard.writeText(currentAddr).then(() => showToast('📋 Copied!'));
+  navigator.clipboard.writeText(currentAddr).then(() => showToast('📋 Copied: ' + currentAddr));
 }
 
 function setRefresh() {
@@ -274,11 +371,11 @@ function startCountdown() {
   }
 }
 
-function showToast(msg) {
+function showToast(msg, isError) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 3000);
 }
 
 function timeAgo(iso) {
