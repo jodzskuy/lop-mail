@@ -501,8 +501,10 @@ function openMail(i){
 
   let body='';
   if(parsed.html){
-    // Use srcdoc — much more reliable than doc.write() in sandboxed iframes
-    body='<iframe class="mail-frame" srcdoc="'+esc(parsed.html)+'" onload="resizeFrame(this)"></iframe>';
+    // Create blob URL — srcdoc attribute breaks on quotes in HTML content
+    const blob=new Blob([parsed.html],{type:'text/html'});
+    const url=URL.createObjectURL(blob);
+    body='<iframe class="mail-frame" src="'+url+'" onload="resizeFrame(this)"></iframe>';
   }else{
     body='<div class="mail-body-text">'+esc(parsed.text||'(empty)')+'</div>';
   }
