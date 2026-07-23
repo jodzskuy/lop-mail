@@ -505,8 +505,12 @@ function openMail(i){
 
   let body='';
   if(parsed.html){
-    // Create blob URL — srcdoc attribute breaks on quotes in HTML content
-    const blob=new Blob([parsed.html],{type:'text/html'});
+    // Inject <base target="_blank"> so all links open in new tab, not inside iframe
+    let html=parsed.html;
+    if(!html.match(/<base\s/i)){
+      html=html.replace(/<head([^>]*)>/i,'<head$1><base target="_blank">');
+    }
+    const blob=new Blob([html],{type:'text/html'});
     const url=URL.createObjectURL(blob);
     body='<iframe class="mail-frame" src="'+url+'" onload="resizeFrame(this)"></iframe>';
   }else{
