@@ -398,11 +398,24 @@ function parseMime(raw){
 
 function decodeQP(s){
   if(!s)return'';
-  // Decode =XX hex sequences
-  let out=s.replace(/=([0-9A-Fa-f]{2})/g,(_,hex)=>String.fromCharCode(parseInt(hex,16)));
-  // Remove soft line breaks
-  out=out.replace(/=\r?\n/g,'');
-  return out;
+  // Step 1: decode =XX hex sequences to byte values
+  const bytes=[];
+  let i=0;
+  while(i<s.length){
+    if(s[i]==='='&&i+2<s.length&&/[0-9A-Fa-f]{2}/.test(s.substr(i+1,2))){
+      bytes.push(parseInt(s.substr(i+1,2),16));
+      i+=3;
+    }else if(s[i]==='='&&(s.substr(i+1,2)==='\r\n'||s[i+1]==='\n')){
+      i+=s[i+1]==='\r'?3:2; // skip soft line break
+    }else{
+      bytes.push(s.charCodeAt(i));
+      i++;
+    }
+  }
+  // Step 2: interpret as UTF-8
+  const arr=new Uint8Array(bytes);
+  try{return new TextDecoder('utf-8').decode(arr);}
+  catch(e){return s.replace(/=([0-9A-Fa-f]{2})/g,(_,h)=>String.fromCharCode(parseInt(h,16))).replace(/=\r?\n/g,'');}
 }
 
 // Init
