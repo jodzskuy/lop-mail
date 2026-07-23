@@ -254,7 +254,7 @@ select:focus{border-color:var(--accent-border)}
   </div>
 </header>
 
-<main class="page">
+<main class="page" id="mainView">
   <div class="tab-bar">
     <div class="tab-btn active" onclick="switchMode('lookup')" id="tabLookup">🔍 Check Inbox</div>
     <div class="tab-btn" onclick="switchMode('generate')" id="tabGenerate">🆕 Generate Email</div>
@@ -486,7 +486,7 @@ function renderMails(){
 
 function openMail(i){
   const m=mails[i];if(!m)return;
-  document.querySelector('.page').style.display='none';
+  document.getElementById('mainView').style.display='none';
   document.getElementById('detailView').style.display='';
 
   const parsed=parseMime(m.text||'');
@@ -501,7 +501,8 @@ function openMail(i){
 
   let body='';
   if(parsed.html){
-    body='<iframe class="mail-frame" sandbox="allow-same-origin" onload="resizeFrame(this)"></iframe>';
+    // Use srcdoc — much more reliable than doc.write() in sandboxed iframes
+    body='<iframe class="mail-frame" srcdoc="'+esc(parsed.html)+'" onload="resizeFrame(this)"></iframe>';
   }else{
     body='<div class="mail-body-text">'+esc(parsed.text||'(empty)')+'</div>';
   }
@@ -511,16 +512,9 @@ function openMail(i){
     '<div class="mail-head"><h2>'+esc(subj||'(no subject)')+'</h2><div class="mail-date">'+dateStr+'</div></div>'+
     '<div class="mail-meta"><div><strong>From:</strong> '+esc(from)+'</div><div><strong>To:</strong> '+esc(toAddr)+'</div></div>'+
     body+'</div>';
-
-  if(parsed.html){
-    setTimeout(()=>{
-      const f=document.getElementById('mailFrame');
-      if(f){const d=f.contentDocument||f.contentWindow.document;d.open();d.write(parsed.html);d.close();}
-    },50);
-  }
 }
 function resizeFrame(f){try{f.style.height=Math.max(300,f.contentDocument.body.scrollHeight+20)+'px'}catch(e){f.style.height='400px'}}
-function closeDetail(){document.querySelector('.page').style.display='';document.getElementById('detailView').style.display='none'}
+function closeDetail(){document.getElementById('mainView').style.display='';document.getElementById('detailView').style.display='none'}
 function copyEmail(){navigator.clipboard.writeText(currentAddr).then(()=>showToast('📋 Copied!'))}
 function setRefresh(){
   const v=parseInt(document.getElementById('refreshInterval').value);countdown=v||10;
