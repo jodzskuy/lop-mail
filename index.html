@@ -344,6 +344,21 @@ function toggleTheme(){
   else{document.body.classList.add('light');document.getElementById('themeBtn').textContent='🌙';}
 })();
 
+// Extract header from raw MIME text
+function extractHeader(raw,name){
+  if(!raw)return'';
+  const re=new RegExp('^'+name+':\\s*(.+?)(?:\\r?\\n(?!\\s)|$)','im');
+  const m=raw.match(re);
+  return m?m[1].trim():'';
+}
+// Parse "Name <email>" format → friendly display
+function friendlyFrom(f){
+  if(!f)return'';
+  const m=f.match(/^(.+?)\s*<(.+?)>$/);
+  if(m)return m[1].replace(/"/g,'').trim();
+  return f;
+}
+
 // MIME parser — extracts HTML or plain text from raw MIME
 function parseMime(raw){
   if(!raw)return{text:'',html:''};
@@ -460,24 +475,15 @@ function renderMails(){
     return;
   }
   list.innerHTML=mails.map((m,i)=>{
-    // Extract subject from raw MIME headers if not set
-    let subj=m.subject||'';
-    if(!subj&&m.text){
-      const sm=m.text.match(/Subject:\s*(.+?)(?:\r?\n(?!\s)|$)/i);
-      if(sm)subj=sm[1].trim();
-    }
-    // Extract from if not set
-    let from=m.from||'';
-    if(!from&&m.text){
-      const fm=m.text.match(/From:\s*(.+?)(?:\r?\n(?!\s)|$)/i);
-      if(fm)from=fm[1].trim();
-    }
+    const raw=m.text||'';
+    let subj=m.subject||extractHeader(raw,'Subject');
+    let from=extractHeader(raw,'From')||m.from||'';
     // Get preview from parsed text
-    const parsed=parseMime(m.text||'');
-    const preview=(parsed.text||m.text||'').replace(/[\r\n]+/g,' ').substring(0,120);
+    const parsed=parseMime(raw);
+    const preview=(parsed.text||raw).replace(/[\r\n]+/g,' ').substring(0,120);
     const t=m.createdAt?timeAgo(m.createdAt):'';
     return '<div class="mail-item unread" onclick="openMail('+i+')">'+
-      '<div class="mail-from">'+esc(from)+'</div>'+
+      '<div class="mail-from">'+esc(friendlyFrom(from))+'</div>'+
       '<div class="mail-subject">'+esc(subj||'(no subject)')+'</div>'+
       '<div class="mail-preview">'+esc(preview)+'</div>'+
       '<div class="mail-time">'+t+'</div></div>';
@@ -491,11 +497,9 @@ function openMail(i){
 
   const parsed=parseMime(m.text||'');
 
-  // Extract headers from raw
-  let subj=m.subject||'';
-  if(!subj&&m.text){const sm=m.text.match(/Subject:\s*(.+?)(?:\r?\n(?!\s)|$)/i);if(sm)subj=sm[1].trim();}
-  let from=m.from||'';
-  if(!from&&m.text){const fm=m.text.match(/From:\s*(.+?)(?:\r?\n(?!\s)|$)/i);if(fm)from=fm[1].trim();}
+  // Extract headers from raw MIME
+  let subj=m.subject||extractHeader(m.text,'Subject');
+  let from=extractHeader(m.text,'From')||m.from||'';
   let toAddr=m.to?.[0]?.address||currentAddr;
   const dateStr=m.createdAt?new Date(m.createdAt).toLocaleString():'';
 
@@ -512,7 +516,7 @@ function openMail(i){
   document.getElementById('mailDetail').innerHTML=
     '<div class="mail-card">'+
     '<div class="mail-head"><h2>'+esc(subj||'(no subject)')+'</h2><div class="mail-date">'+dateStr+'</div></div>'+
-    '<div class="mail-meta"><div><strong>From:</strong> '+esc(from)+'</div><div><strong>To:</strong> '+esc(toAddr)+'</div></div>'+
+    '<div class="mail-meta"><div><strong>From:</strong> '+esc(friendlyFrom(from))+'</div><div><strong>To:</strong> '+esc(toAddr)+'</div></div>'+
     body+'</div>';
 }
 function resizeFrame(f){try{f.style.height=Math.max(300,f.contentDocument.body.scrollHeight+20)+'px'}catch(e){f.style.height='400px'}}
